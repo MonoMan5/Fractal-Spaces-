@@ -114,6 +114,24 @@ class Tickers(object):
 #FUNCTIONS
 ###############################################################################
 
+def CV_linear(X,Y,model, deg = 1, size =0.4, cv = 20):
+    
+    scores=[]
+    
+    X = PolynomialFeatures(degree=deg).fit_transform(X)
+    
+    for ii in range(cv):
+        X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=size, random_state=random.randint(0,100))
+        model.fit(X_train,y_train)
+        scores.append(model.score(X_test,y_test))
+    
+    mean = np.mean(scores)
+    std = np.std(scores)
+    
+    print ("The average score is: {0:.2f} with a deviation of +/- {1:.2f}".format(mean,std))
+    
+    return scores,mean,std
+
 def lin_reg(X,Y,deg=1):
     
     """
@@ -260,9 +278,8 @@ plt.xlim(0,10)
 plt.grid()
 '''
 
-X = PolynomialFeatures(degree=4).fit_transform(X)
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.4, random_state=random.randint(0,100))
-lm.fit(X_train,y_train)
-print(lm.score(X_test,y_test))
+tickers = ['VNO','SLG','ESRT', 'CLI','BXP','CIO','BPY','LPT','SIR','TIER','PDM',
+           'BDN','CXP','OFC','HPP', 'ARE', 'PKY', 'EQC','HIW']
 
-
+TT = Tickers(tickers)
+TT.corr()
