@@ -78,6 +78,7 @@ class Tickers(object):
     def __init__(self, tickers):    # Construct class with dataframe
         
         d={}
+        lengths = []
                 
         for t in tickers:
             if not isinstance(t,str):
@@ -86,9 +87,20 @@ class Tickers(object):
             else:
                 dummy = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/'
                                 +t+'.csv')
+                
                 d[t] = pd.Series(dummy['Close'])
-            
-                self.ticker_data = pd.DataFrame(d)
+        
+        maximum = max([d[key].size for key in d])
+        
+        for key in d:                # Some columns are too short, this fills the missing space with NAN.
+            temp = np.empty((maximum))
+            if d[key].size != maximum:
+                dist = maximum - d[key].size
+                temp[:dist] = np.NAN
+                temp[dist:] = d[key]
+                d[key] = temp
+        
+        self.ticker_data = pd.DataFrame(d)
                 
                 
     def corr(self):                 #Display correlation matrix
@@ -108,6 +120,19 @@ class Tickers(object):
         plt.grid()
         plt.show()
     
+    def high_corr(self, tickers = 'all', treshold = 0.7):
+        corr_table = self.ticker_data.corr()
+        
+        if tickers == 'all':
+            for t in corr_table:
+                corr_table_cut = corr_table[corr_table[t]>treshold]
+                print (corr_table_cut[t])
+        else:        
+            for t in tickers:
+                corr_table_cut = corr_table[corr_table[t]>treshold]
+                print (corr_table_cut[t])
+        
+        
 
 
 ###############################################################################
@@ -278,8 +303,9 @@ plt.xlim(0,10)
 plt.grid()
 '''
 
-tickers = ['VNO','SLG','ESRT', 'CLI','BXP','CIO','BPY','LPT','SIR','TIER','PDM',
-           'BDN','CXP','OFC','HPP', 'ARE', 'PKY', 'EQC','HIW']
+tickers = ['VNO','SLG','ESRT', 'CLI','BXP','CIO','BPY','LPT','TIER','PDM',
+           'BDN','CXP','OFC','HPP', 'ARE', 'EQC','HIW']
 
 TT = Tickers(tickers)
-TT.corr()
+C = TT.high_corr(treshold = 0.9)
+
