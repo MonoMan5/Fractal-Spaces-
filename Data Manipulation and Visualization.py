@@ -13,7 +13,7 @@ from sklearn import linear_model
 from sklearn import metrics
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import PolynomialFeatures, scale, normalize
 
 
 import numpy as np
@@ -23,10 +23,10 @@ import math
 import random
 
 ###############################################################################
-#CLASSES
+# CLASSES
 ###############################################################################
 
-class Revenue_Dist(object):
+class RevenueDist(object):
     
     """
     Object that takes in time difference data of slots and creates a pandas dataframe,
@@ -75,10 +75,14 @@ class Tickers(object):
     loaded into a pandas dataframe.
     """
     
-    def __init__(self, tickers):    # Construct class with dataframe
+    def __init__(self, tickers = 'all'):    # Construct class with dataframe
         
         d={}
-        lengths = []
+        default_tickers = ['VNO','SLG','ESRT', 'CLI','BXP','CIO','BPY','LPT','TIER','PDM',
+           'BDN','CXP','OFC','HPP', 'ARE', 'EQC','HIW']
+        
+        if tickers == 'all':
+            tickers = default_tickers
                 
         for t in tickers:
             if not isinstance(t,str):
@@ -132,14 +136,43 @@ class Tickers(object):
                 corr_table_cut = corr_table[corr_table[t]>treshold]
                 print (corr_table_cut[t])
         
+
+
+###############################################################################
+# FUNCTIONS
+###############################################################################
+
+def poly_fit(X,Y, limit = 10):
+    
+    """
+    Determines degree of optimal polynomial fitted with linear regression.
+    """
+    
+    i = 0
+    scores = []
+    
+    X = np.transpose(np.matrix(X))
+    Y = np.transpose(np.matrix(Y))
+    lm = linear_model.LinearRegression()
+    
+    while i<limit:
+        s = CV_linear(X,Y,lm, deg = i+1)[1]
+        if s<0 and i!=0:
+            break
+        else:
+            scores.append(s)
+            i+=1
         
+    print (scores)
+    print ('The best fit is of degree: ' + str(scores.index(max(scores))+1))
+    return scores.index(max(scores))+1
+    
 
-
-###############################################################################
-#FUNCTIONS
-###############################################################################
-
-def CV_linear(X,Y,model, deg = 1, size =0.4, cv = 20):
+def CV_linear(X,Y,model, deg = 1, size =0.2, cv = 50):
+    
+    """
+    Performs cross validation on target linear regression model.
+    """
     
     scores=[]
     
@@ -185,7 +218,7 @@ def lin_reg(X,Y,deg=1):
     print ("The R Squared is:" + str(R2))
     print (m,b)
     
-    return m,b,R2
+    return m,b,R2,lm
     
 def gen_hist(X, name):
     
@@ -271,41 +304,123 @@ def gen_2Dlinfit(X1,X2,Z,name):
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-
+'''
 input_file = '419-Park-Ave-S-2nd-Floor-NY-10016_1-year-till_jun-24-17' + '.csv'
 
 data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
 time_slots  = data['Time difference'] = data['Time difference'].apply(lambda x: x/60)
-series = Revenue_Dist(time_slots, 75)
+
+series = RevenueDist(time_slots,75)
+deg = 3
 
 Xp = series.data_frame['Time Slot Duration']
 Yp = series.data_frame.cumsum()['Annual Revenue']
 
+Xp, Yp = scale(Xp), scale (Yp)
+
 X = np.transpose(np.matrix(Xp))
-Y = np.transpose(np.matrix(Yp))
+#Y = np.transpose(np.matrix(Yp))
+Y = Yp
 
-lm = linear_model.LinearRegression()
+X_poly = PolynomialFeatures(degree=deg).fit_transform(X)
 
-'''
-Tp = np.linspace(0,max(Xp),len(Xp))
-Tp = np.reshape(Tp,(26,1))
+Lasso = linear_model.RidgeCV()
 
-for i in range(5,6):
-    X_Mod = PolynomialFeatures(degree=i).fit_transform(X)
-    T = PolynomialFeatures(degree=i).fit_transform(Tp)
-    lm.fit(X_Mod,Y)
-    plt.plot(Tp,lm.predict(T),'b')
-    R2 = metrics.r2_score(Y,lm.predict(X_Mod))
-    print ("The R Squared is:" + str(R2))
+Lasso.fit(X_poly,Y)
+
+print("The R2 score is : " + str(Lasso.score(X_poly,Y)))
+
+
+Tp = np.linspace(min(Xp),max(Xp),Xp.size)
+T = np.transpose(np.matrix(Tp))
+T = PolynomialFeatures(degree=deg).fit_transform(T)
 
 plt.plot(X,Y,'--r')
-plt.xlim(0,10)
+plt.plot(X,Lasso.predict(X_poly),'g')
+plt.plot(Tp, Lasso.predict(T),'b')
 plt.grid()
+plt.show()
+
+print(Lasso.coef_)
 '''
 
-tickers = ['VNO','SLG','ESRT', 'CLI','BXP','CIO','BPY','LPT','TIER','PDM',
-           'BDN','CXP','OFC','HPP', 'ARE', 'EQC','HIW']
+input_file = 'Annual-report-data-Test' + '.csv'
 
-TT = Tickers(tickers)
-C = TT.high_corr(treshold = 0.9)
+data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
+
+Midtown = data[data['Location'] == 'Midtown']
+
+Downtown = data[data['Location']=='Downtown']
+
+Midtown_s = data[data['Location'] == 'Midtown South']
+
+Manhattan = data[data['Location'] == 'Manhattan Total']
+
+Midtown_rent = Midtown.ix[:,'Overall asking rent (gross $ PSF)']
+Downtown_rent = Downtown.ix[:,'Overall asking rent (gross $ PSF)']
+Midtown_s_rent = Midtown_s.ix[:,'Overall asking rent (gross $ PSF)']
+Manhattan_rent = Manhattan.ix[:,'Overall asking rent (gross $ PSF)']
+
+Midtown_rent = np.array(Midtown_rent[::-1])
+Downtown_rent = np.array(Downtown_rent[::-1])
+Midtown_s_rent = np.array(Midtown_s_rent[::-1])
+Manhattan_rent = np.array(Manhattan_rent[::-1])
+
+d ={'Mid': Midtown_rent,
+    'Down': Downtown_rent,
+    'Mid_s': Midtown_s_rent,
+    'Man': Manhattan_rent}
+
+d = pd.DataFrame(d)
+print (d.corr())
+
+X = range(Midtown_rent.size)
+
+'''
+plt.plot(X,Midtown_rent,'b', label = 'Midtown')
+plt.plot(X,Downtown_rent,'k', label = 'Downtown')
+plt.plot(X, Midtown_s_rent,'r', label = 'Midtown South')
+plt.plot(X, Manhattan_rent,'g', label = 'Manhattan')
+plt.title('Rent vs time')
+plt.ylabel('Asking rent ($ PSF)')
+plt.xlabel('Time (quarters)')
+plt.legend()
+plt.grid()
+plt.show()
+'''
+
+
+
+TT = Tickers()
+VNO = TT.ticker_data['VNO']
+VNO_quarter = []
+
+slicer = int(len(VNO)/14)
+
+for ii in range(14):
+    VNO_quarter.append(np.mean(VNO[ii*slicer:(ii+1)*slicer]))
+
+VNO_quarter = np.array(VNO_quarter)
+
+Manhattan_rent_2 = normalize(Manhattan_rent)
+VNO_quarter_2 = normalize(VNO_quarter)
+
+print(Manhattan_rent_2,VNO_quarter_2)    
+
+
+dd = {'Man': Manhattan_rent_2[0],
+      'VNO' :VNO_quarter_2[0]}
+
+Manhattan_rent_3 = normalize(Manhattan_rent).T
+VNO_quarter_3 = normalize(VNO_quarter).T 
+
+plt.plot(X,Manhattan_rent_3,'r', label = 'Manhattan')
+plt.plot(X,VNO_quarter_3, 'b', label = 'VNO')
+plt.legend()
+plt.grid()
+plt.show()
+
+dd = pd.DataFrame(dd)
+print (dd.head())
+print(dd.corr())
 
