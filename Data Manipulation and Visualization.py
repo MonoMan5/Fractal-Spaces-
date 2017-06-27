@@ -137,6 +137,44 @@ class Tickers(object):
                 print (corr_table_cut[t])
         
 
+class KPITable(object):
+    
+    """
+    Create a DataFrame that stores KPI data for properties in Manhattan
+    """
+    
+    def __init__(self, split_by = 'Location'):      #Construct object and split data based on chosen column
+        
+        d_split = {}
+        
+        input_file = 'Annual-report-data-Test' + '.csv'
+        data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
+
+        if split_by == 'Location':
+            for tt in data['Location']:
+                d_split[tt] = data[data['Location'] == tt]
+        
+        self.split_table = d_split
+            
+
+    def get_KPI(self, KPI):         #Returns dataframe with specified KPI in columns
+    
+        d={}
+        d_split = self.split_table
+    
+        for key in d_split:
+            d[key] = d_split[key].ix[:,KPI]
+            d[key] = np.array(d[key][::-1])
+        
+        d = (pd.DataFrame(d, index = d_split['Manhattan Total']['Time'][::-1]),KPI)
+        
+        return d
+    
+    def plot_KPI(self, KPI):        #Plots chosen KPI against time
+    
+        KPI_frame = self.get_KPI(KPI)[0]
+        KPI_frame.plot(grid = True, title = KPI + ' vs. Time')
+
 
 ###############################################################################
 # FUNCTIONS
@@ -342,41 +380,13 @@ plt.grid()
 plt.show()
 
 print(Lasso.coef_)
-'''
 
 input_file = 'Annual-report-data-Test' + '.csv'
 
 data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
 
-Midtown = data[data['Location'] == 'Midtown']
-
-Downtown = data[data['Location']=='Downtown']
-
-Midtown_s = data[data['Location'] == 'Midtown South']
-
-Manhattan = data[data['Location'] == 'Manhattan Total']
-
-Midtown_rent = Midtown.ix[:,'Overall asking rent (gross $ PSF)']
-Downtown_rent = Downtown.ix[:,'Overall asking rent (gross $ PSF)']
-Midtown_s_rent = Midtown_s.ix[:,'Overall asking rent (gross $ PSF)']
-Manhattan_rent = Manhattan.ix[:,'Overall asking rent (gross $ PSF)']
-
-Midtown_rent = np.array(Midtown_rent[::-1])
-Downtown_rent = np.array(Downtown_rent[::-1])
-Midtown_s_rent = np.array(Midtown_s_rent[::-1])
-Manhattan_rent = np.array(Manhattan_rent[::-1])
-
-d ={'Mid': Midtown_rent,
-    'Down': Downtown_rent,
-    'Mid_s': Midtown_s_rent,
-    'Man': Manhattan_rent}
-
-d = pd.DataFrame(d)
-print (d.corr())
-
 X = range(Midtown_rent.size)
 
-'''
 plt.plot(X,Midtown_rent,'b', label = 'Midtown')
 plt.plot(X,Downtown_rent,'k', label = 'Downtown')
 plt.plot(X, Midtown_s_rent,'r', label = 'Midtown South')
@@ -387,12 +397,15 @@ plt.xlabel('Time (quarters)')
 plt.legend()
 plt.grid()
 plt.show()
-'''
 
-
+Unemployment = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/NYCLFSA.csv')
+Unemployment = Unemployment[np.isnan(Unemployment['Unemp Rate'])== False]
+Unemployment = Unemployment.ix[:,'Unemp Rate']
+print(Unemployment)
 
 TT = Tickers()
-VNO = TT.ticker_data['VNO']
+#VNO = TT.ticker_data['VNO']
+VNO = Unemployment
 VNO_quarter = []
 
 slicer = int(len(VNO)/14)
@@ -423,4 +436,7 @@ plt.show()
 dd = pd.DataFrame(dd)
 print (dd.head())
 print(dd.corr())
+'''
 
+KPI = KPITable()
+KPI.plot_KPI('Overall asking rent (gross $ PSF)')
