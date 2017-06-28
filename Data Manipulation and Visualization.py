@@ -143,18 +143,19 @@ class KPITable(object):
     Create a DataFrame that stores KPI data for properties in Manhattan
     """
     
-    def __init__(self, split_by = 'Location'):      #Construct object and split data based on chosen column
+    def __init__(self, split_by = 'Broad Location'):      #Construct object and split data based on chosen column
         
         d_split = {}
         
-        input_file = 'Annual-report-data-Test' + '.csv'
+        input_file = 'Manhattan-Data-Collection' + '.csv'
         data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
 
-        if split_by == 'Location':
-            for tt in data['Location']:
-                d_split[tt] = data[data['Location'] == tt]
+        if split_by == 'Broad Location':
+            for tt in data[split_by]:
+                d_split[tt] = data[data['Location'] == tt + ' Market Totals']
         
         self.split_table = d_split
+        self.split = split_by
             
 
     def get_KPI(self, KPI):         #Returns dataframe with specified KPI in columns
@@ -166,7 +167,7 @@ class KPITable(object):
             d[key] = d_split[key].ix[:,KPI]
             d[key] = np.array(d[key][::-1])
         
-        d = (pd.DataFrame(d, index = d_split['Manhattan Total']['Time'][::-1]),KPI)
+        d = (pd.DataFrame(d, index = d_split[list(d_split.keys())[0]]['Time'][::-1]),KPI)
         
         return d
     
@@ -174,6 +175,31 @@ class KPITable(object):
     
         KPI_frame = self.get_KPI(KPI)[0]
         KPI_frame.plot(grid = True, title = KPI + ' vs. Time')
+
+class MacroVariables(object):
+    '''
+    Creates an object to store macroeconomic variables
+    '''
+    
+    def __init__(self):
+        
+        input_file = 'Macro- NYC & US - Sheet1' + '.csv'
+        data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
+        self.macro_data = data
+
+class MacroData(object):
+    '''
+    Instantiates the three different macroeconomic object: KPIs, Tickers
+    and Macro Variables. Hold methods to compare and analyze the 
+    relationships between the datasets.
+    '''
+    
+    def __init__(self):
+        
+        self.KPI = KPITable()
+        self.Tickers = Tickers()
+        self.MacroVar = MacroVariables()
+        
 
 
 ###############################################################################
@@ -380,23 +406,12 @@ plt.grid()
 plt.show()
 
 print(Lasso.coef_)
+'''
 
+'''
 input_file = 'Annual-report-data-Test' + '.csv'
 
 data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
-
-X = range(Midtown_rent.size)
-
-plt.plot(X,Midtown_rent,'b', label = 'Midtown')
-plt.plot(X,Downtown_rent,'k', label = 'Downtown')
-plt.plot(X, Midtown_s_rent,'r', label = 'Midtown South')
-plt.plot(X, Manhattan_rent,'g', label = 'Manhattan')
-plt.title('Rent vs time')
-plt.ylabel('Asking rent ($ PSF)')
-plt.xlabel('Time (quarters)')
-plt.legend()
-plt.grid()
-plt.show()
 
 Unemployment = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/NYCLFSA.csv')
 Unemployment = Unemployment[np.isnan(Unemployment['Unemp Rate'])== False]
@@ -438,5 +453,22 @@ print (dd.head())
 print(dd.corr())
 '''
 
+
+input_file = 'Macro- NYC & US - Sheet1' + '.csv'
+data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
 KPI = KPITable()
-KPI.plot_KPI('Overall asking rent (gross $ PSF)')
+d = KPI.get_KPI('Overall asking rent (gross $ PSF)')[0]
+unemployment = data['Unemployment New York']
+UU = []
+
+
+length = len(d['Midtown'])
+cut = int(len(unemployment)/length)
+
+for ii in range(length):
+    UU.append(np.mean(unemployment[ii*cut:(ii+1)*cut]))
+
+UU = pd.Series(UU, index = d.index)
+d['Unemployment NYC'] = UU
+
+M = MacroData()
