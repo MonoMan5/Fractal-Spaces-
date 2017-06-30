@@ -9,6 +9,8 @@ import os
 import pandas as pd
 import pyparsing as pp
 from pyparsing import Word,alphas,nums
+import numpy as np
+import time as TT
 
 ###############################################################################
 #   CLASSES
@@ -56,9 +58,10 @@ def raw_parse(filename):
                       # time period and the name of the office
     
     for s in prices_loc:
-        key = s[0] +' '+s[1]
+        time = s[0]
+        period = s[1]
         value = " ".join(s[2:])
-        prices_arr.append((key,value))
+        prices_arr.append((time,period,value))
         
     
     timeslot_arr = []   #The second array returned, contains a big mess of data,
@@ -84,4 +87,60 @@ def raw_parse(filename):
 
 input_file = 'test_amar-2'+'.csv'
 
-print (raw_parse(input_file))
+offices_arr = []
+
+prices = raw_parse(input_file)[1]
+mess = raw_parse(input_file)[2]
+
+for ii in range(8):
+    week_arr = []
+    for week in mess:
+        day = week[ii]
+        week_arr.append(day)
+    offices_arr.append((prices[ii],week_arr))
+
+MESS = offices_arr
+#MESS[office][price_loc/schedule][(price,period,name)/(Sun,Mon...,Sat)][NaN/(day,month,date,status)]
+
+price_pd = []
+hours_pd = []
+name_pd=[]
+day_of_week_pd = []
+month_pd = []
+day_date_pd = []
+
+
+for l in range(len(offices_arr)):
+    for ii in range(7):
+        price_hour = MESS[l][0]
+        price_pd.append(price_hour[0])
+        hours_pd.append(price_hour[1])
+        name_pd.append(price_hour[2])
+        
+for l in range(len(offices_arr)):
+    for k in range(7):
+        office = MESS[l]
+        temp_day = office[1][k][0]
+        temp_month = office[1][k][1]
+        temp_date = office[1][k][2]
+        day_of_week_pd.append(temp_day)
+        month_pd.append(temp_month)
+        day_date_pd.append(temp_date)
+
+time_diffs = []
+
+for l in range(len(offices_arr)):
+    test = list(MESS[l][1][1])
+    if (len(test)<6):
+        time_diffs.append(np.NaN)
+    else:
+        time = test[3:]
+        time_format = [TT.strptime(time[ii]+time[ii+1], "%I:%M%p").tm_hour+(TT.strptime(time[ii]+time[ii+1], "%I:%M%p").tm_min)/60 for ii in range(0,len(time),2)]
+        result = [abs(time_format[ii]-time_format[ii+1]) for ii in range(0,len(time_format),2)]
+        result = sum(result)
+        time_diffs.append(result)
+print (time_diffs)
+    
+
+#print(price_pd,hours_pd,name_pd)
+    
