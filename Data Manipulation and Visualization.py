@@ -153,6 +153,11 @@ class KPITable(object):
         if split_by == 'Broad Location':
             for tt in data[split_by]:
                 d_split[tt] = data[data['Location'] == tt + ' Market Totals']
+                
+        if split_by == 'Location':
+            for tt in data[split_by]:
+                d_split[tt] = data[data['Location'] == tt]
+                
         
         self.split_table = d_split
         self.split = split_by
@@ -162,12 +167,15 @@ class KPITable(object):
     
         d={}
         d_split = self.split_table
+        maximum = max([d_split[key].ix[:,KPI].size for key in d_split])
     
         for key in d_split:
-            d[key] = d_split[key].ix[:,KPI]
-            d[key] = np.array(d[key][::-1])
+            d[key] = list(d_split[key].ix[:,KPI])
+            if len(d[key])<maximum:
+                d[key].insert(0,np.NaN)
+            d[key] = np.array(d[key])
         
-        d = (pd.DataFrame(d, index = d_split[list(d_split.keys())[0]]['Time'][::-1]),KPI)
+        d = (pd.DataFrame(d, index = d_split[list(d_split.keys())[0]]['Time']),KPI)
         
         return d
     
@@ -190,7 +198,7 @@ class MacroVariables(object):
 class MacroData(object):
     '''
     Instantiates the three different macroeconomic object: KPIs, Tickers
-    and Macro Variables. Hold methods to compare and analyze the 
+    and Macro Variables. Holds methods to compare and analyze the 
     relationships between the datasets.
     '''
     
@@ -386,89 +394,12 @@ X = np.transpose(np.matrix(Xp))
 #Y = np.transpose(np.matrix(Yp))
 Y = Yp
 
-X_poly = PolynomialFeatures(degree=deg).fit_transform(X)
-
-Lasso = linear_model.RidgeCV()
-
-Lasso.fit(X_poly,Y)
-
-print("The R2 score is : " + str(Lasso.score(X_poly,Y)))
-
-
-Tp = np.linspace(min(Xp),max(Xp),Xp.size)
-T = np.transpose(np.matrix(Tp))
-T = PolynomialFeatures(degree=deg).fit_transform(T)
-
 plt.plot(X,Y,'--r')
-plt.plot(X,Lasso.predict(X_poly),'g')
-plt.plot(Tp, Lasso.predict(T),'b')
 plt.grid()
 plt.show()
-
-print(Lasso.coef_)
 '''
 
-'''
-input_file = 'Annual-report-data-Test' + '.csv'
-
-data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
-
-Unemployment = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/NYCLFSA.csv')
-Unemployment = Unemployment[np.isnan(Unemployment['Unemp Rate'])== False]
-Unemployment = Unemployment.ix[:,'Unemp Rate']
-print(Unemployment)
-
-TT = Tickers()
-#VNO = TT.ticker_data['VNO']
-VNO = Unemployment
-VNO_quarter = []
-
-slicer = int(len(VNO)/14)
-
-for ii in range(14):
-    VNO_quarter.append(np.mean(VNO[ii*slicer:(ii+1)*slicer]))
-
-VNO_quarter = np.array(VNO_quarter)
-
-Manhattan_rent_2 = normalize(Manhattan_rent)
-VNO_quarter_2 = normalize(VNO_quarter)
-
-print(Manhattan_rent_2,VNO_quarter_2)    
-
-
-dd = {'Man': Manhattan_rent_2[0],
-      'VNO' :VNO_quarter_2[0]}
-
-Manhattan_rent_3 = normalize(Manhattan_rent).T
-VNO_quarter_3 = normalize(VNO_quarter).T 
-
-plt.plot(X,Manhattan_rent_3,'r', label = 'Manhattan')
-plt.plot(X,VNO_quarter_3, 'b', label = 'VNO')
-plt.legend()
-plt.grid()
-plt.show()
-
-dd = pd.DataFrame(dd)
-print (dd.head())
-print(dd.corr())
-'''
-
-
-input_file = 'Macro- NYC & US - Sheet1' + '.csv'
-data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
 KPI = KPITable()
-d = KPI.get_KPI('Overall asking rent (gross $ PSF)')[0]
-unemployment = data['Unemployment New York']
-UU = []
+d = KPI.get_KPI('Current inventory (SF)')[0]
 
 
-length = len(d['Midtown'])
-cut = int(len(unemployment)/length)
-
-for ii in range(length):
-    UU.append(np.mean(unemployment[ii*cut:(ii+1)*cut]))
-
-UU = pd.Series(UU, index = d.index)
-d['Unemployment NYC'] = UU
-
-M = MacroData()
