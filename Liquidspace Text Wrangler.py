@@ -11,6 +11,7 @@ import pyparsing as pp
 from pyparsing import Word,alphas,nums
 import numpy as np
 import time as TT
+import datetime as DT
 
 
 ###############################################################################
@@ -152,7 +153,7 @@ def unwrap(input_file, row = 0):
             temp_date = office[1][k][2]
             
             day_of_week_pd.append(temp_day)
-            month_pd.append(temp_month)
+            month_pd.append(convert_month(temp_month))
             day_date_pd.append(temp_date)
     
        
@@ -177,14 +178,34 @@ def unwrap(input_file, row = 0):
     d = pd.DataFrame(d, index = d['Month'])  #Choose index as appropriate
     
     return d,which_week
+
+def convert_month(month):
+    
+    months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    
+    converted = months.index(month) + 1
+    
+    return converted
     
 
 ###############################################################################
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-row = 0
-
 input_file = 'SOMETEST'+'.csv'
 
-print(unwrap(input_file, row = 30))
+print("STARTING!")
+t1 = TT.clock()
+
+test = []
+
+for ii in range(52):
+    d1 = unwrap(input_file, row = ii)[0]
+    test.append(d1)
+
+df = pd.concat(test)
+
+print ("DONE!")
+print ('This took: ' + str(TT.clock()-t1) + ' seconds')
+
+print(df)
