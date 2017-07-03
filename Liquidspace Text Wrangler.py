@@ -23,7 +23,7 @@ import time as TT
 #   FUNCTIONS
 ###############################################################################
 
-def raw_parse(filename):
+def raw_parse(filename, row = 0):
     '''
     The first function in the parsing pipeline. Takes in the raw block of data
     from the CSV file and parses the text to return two arrays:
@@ -36,12 +36,13 @@ def raw_parse(filename):
     '''
     input_file = filename
     data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Weekly Data CSV/'+input_file, encoding = 'latin-1')
-    d = data.loc[0][0]
+    d = data.iloc[row][0]
     d = d.replace(u'\xa0', ' ')  #Encoding is messed up, 
                                  #this character \xa0 causes problems if not removed
     d = d.replace(u'åÊ', ' ')
     
    
+    months_30 = ['Sep', 'Apr', 'Jun', 'Nov']
     
     date = Word( alphas ) + Word(nums) +'-' + Word( alphas ) + Word(nums) + pp.Suppress(',') + pp.Suppress(Word(nums))
     location = Word( pp.alphanums+'-()#.' )
@@ -52,7 +53,15 @@ def raw_parse(filename):
     
     week = week_date[0]+ ' ' +week_date[1] + ' ' + week_date[2] + ' ' + week_date[3]+ ' '+week_date[4]
     
+    start_month = week_date[0]
     start_day = week_date[1]
+    
+    if start_month in months_30:
+        selector = 30
+    elif start_month == 'Feb':
+        selector = 28
+    else:
+        selector = 31
         
     
     prices_arr = []   #One of the two arrays returned, returns tuples of price per
@@ -75,9 +84,16 @@ def raw_parse(filename):
     extra = pp.Or([Word(alphas) + Word(alphas), timeslot, pp.Empty()]) 
     
     for ii in range(7):
-        day = int(start_day) +ii
+        
+        if (int(start_day) +ii)%selector == 0:
+            day = int(start_day) +ii
+        else:
+            day = (int(start_day) +ii)%selector
+            
         if day<10:
             day = str(0) + str(day)
+        else:
+            day = str(day)
         
         start = Word(alphas) + pp.Suppress(',') + Word( alphas) + day + extra 
             
@@ -87,14 +103,14 @@ def raw_parse(filename):
     return week, prices_arr,timeslot_arr
 
 
-def unwrap(input_file):
+def unwrap(input_file, row = 0):
     '''
     Unwraps the complicated processed text file from raw_parse and creates a 
     dataframe that stores all the week's data.
     '''
     offices_arr = []
     
-    RP = raw_parse(input_file)
+    RP = raw_parse(input_file, row = row)
     
     which_week = RP[0] 
     prices = RP[1]
@@ -167,6 +183,8 @@ def unwrap(input_file):
 #   MAIN PROGRAM BODY
 ###############################################################################
 
+row = 0
+
 input_file = 'SOMETEST'+'.csv'
 
-print(unwrap(input_file)[0])
+print(unwrap(input_file, row = 30))
