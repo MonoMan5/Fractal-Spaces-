@@ -11,7 +11,7 @@ import pyparsing as pp
 from pyparsing import Word,alphas,nums
 import numpy as np
 import time as TT
-import timeit
+
 
 ###############################################################################
 #   CLASSES
@@ -35,13 +35,13 @@ def raw_parse(filename):
         
     '''
     input_file = filename
-    data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/'+input_file)
-    d = data['table']
-    d = d[0]
+    data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Weekly Data CSV/'+input_file, encoding = 'latin-1')
+    d = data.loc[0][0]
     d = d.replace(u'\xa0', ' ')  #Encoding is messed up, 
                                  #this character \xa0 causes problems if not removed
+    d = d.replace(u'åÊ', ' ')
     
-    remove = Word(alphas) + pp.Literal('This reservation was created in different reservation mode for workspace, please correct.')
+   
     
     date = Word( alphas ) + Word(nums) +'-' + Word( alphas ) + Word(nums) + pp.Suppress(',') + pp.Suppress(Word(nums))
     location = Word( pp.alphanums+'-()#.' )
@@ -53,7 +53,7 @@ def raw_parse(filename):
     week = week_date[0]+ ' ' +week_date[1] + ' ' + week_date[2] + ' ' + week_date[3]+ ' '+week_date[4]
     
     start_day = week_date[1]
-    
+        
     
     prices_arr = []   #One of the two arrays returned, returns tuples of price per
                       # time period and the name of the office
@@ -69,13 +69,18 @@ def raw_parse(filename):
                         #basically encodes all the usage info for each office over the week.
                         #Call the unwrap function on this beast to make sense of it
     
+    lit= pp.Literal('This reservation was created in different reservation mode for workspace, please correct.') 
+    remove =  pp.Or(Word(alphas) + lit, Word(alphas) + Word(alphas) + lit)
+    timeslot = pp.OneOrMore(Word(nums+':') + Word(alphas) + pp.Suppress('-') + Word(nums+':') + Word(alphas) + pp.Suppress(remove))
+    extra = pp.Or([Word(alphas) + Word(alphas), timeslot, pp.Empty()]) 
+    
     for ii in range(7):
         day = int(start_day) +ii
+        if day<10:
+            day = str(0) + str(day)
         
-        timeslot = pp.OneOrMore(Word(nums+':') + Word(alphas) + pp.Suppress('-') + Word(nums+':') + Word(alphas) + pp.Suppress(remove))
-        extra = pp.Or([Word(alphas) + Word(alphas), timeslot, pp.Empty()]) 
-        start = Word(alphas) + pp.Suppress(',') + Word( alphas) + str(day) + extra 
-        
+        start = Word(alphas) + pp.Suppress(',') + Word( alphas) + day + extra 
+            
         dd = start.searchString(d)
         timeslot_arr.append(dd)
 
@@ -95,7 +100,7 @@ def unwrap(input_file):
     prices = RP[1]
     mess = RP[2]
     
-    for ii in range(8):
+    for ii in range(len(prices)):
         week_arr = []
         for week in mess:
             day = week[ii]
@@ -162,11 +167,6 @@ def unwrap(input_file):
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-input_file = 'test_amar-2'+'.csv'
+input_file = 'SOMETEST'+'.csv'
 
-d = unwrap(input_file)
-
-print(d)
-
-
-    
+print(unwrap(input_file)[0])
