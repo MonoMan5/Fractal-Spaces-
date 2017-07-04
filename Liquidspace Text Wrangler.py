@@ -11,7 +11,6 @@ import pyparsing as pp
 from pyparsing import Word,alphas,nums
 import numpy as np
 import time as TT
-import datetime as DT
 
 ###############################################################################
 #   GLOBAL VARIABLES
@@ -96,9 +95,11 @@ def raw_parse(filename, row = 0):
    
     months_30 = ['Sep', 'Apr', 'Jun', 'Nov']
     
+    #AMtime = Word(nums+':') + pp.Or(pp.Literal('AM'),pp.Literal('PM')) on standby
+    
     date = Word( alphas ) + Word(nums) +'-' + Word( alphas ) + Word(nums) + pp.Suppress(',') + pp.Suppress(Word(nums))
-    location = Word( pp.alphanums+'-()#.' )
-    price_loc = pp.Suppress('$') + Word(nums) + pp.Suppress('/') + Word(alphas) + pp.OneOrMore(location)
+    location = Word(pp.alphanums+'-()#.') + pp.OneOrMore( ~pp.LineStart() + Word( pp.alphanums+'-()#.' )) 
+    price_loc = pp.Suppress('$') + Word(nums) + pp.Suppress('/') + Word(alphas) + location
     
     week_date = date.parseString(d)
     prices_loc = price_loc.searchString(d)
@@ -246,9 +247,13 @@ def convert_month(month):
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-input_file = 'SOMETEST'+'.csv'
+a = os.listdir(read_dir)
 
-d1 = Building(input_file)
+for file in a:
+    d1 = Building(file)
+    print ('Processed ' + file + ' !')
+
+print('Done!')
 
 
 
