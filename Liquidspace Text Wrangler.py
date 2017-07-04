@@ -49,8 +49,16 @@ class Building(object):
             
             df = pd.concat(test)
             
-            p = np.array(df['Price']).astype(float)
-            new_column = df['Time Used']*p
+            p=[]
+            
+            for ppp in df['Time Used']:
+                if ppp == 'Closed':
+                    p.append(np.NaN)
+                else:
+                    p.append(ppp)
+                    
+            q= np.array(df['Price']).astype(float)
+            new_column = q*p
             df['Revenue'] = pd.Series(new_column, index = df.index)
             df = df.sort_values(['Name','Month','Date'])
             
@@ -200,9 +208,12 @@ def unwrap(input_file, row = 0):
             day_date_pd.append(temp_date)
     
        
-            test = list(MESS[l][1][k])
-            if (len(test)<6):
-                time_diffs.append(np.NaN)
+            test = list(MESS[l][1][k])  
+            if len(test)>2 and len(test)<6:
+                if len(test) == 5:
+                    time_diffs.append('Closed')
+                else:
+                    time_diffs.append(np.NaN)
             else:
                 time = test[3:]
                 time_format = [TT.strptime(time[ii]+time[ii+1], "%I:%M%p").tm_hour+(TT.strptime(time[ii]+time[ii+1], "%I:%M%p").tm_min)/60 for ii in range(0,len(time),2)]
@@ -238,5 +249,6 @@ def convert_month(month):
 input_file = 'SOMETEST'+'.csv'
 
 d1 = Building(input_file)
+
 
 
