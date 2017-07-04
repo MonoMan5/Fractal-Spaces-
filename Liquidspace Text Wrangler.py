@@ -13,11 +13,54 @@ import numpy as np
 import time as TT
 import datetime as DT
 
+###############################################################################
+#   GLOBAL VARIABLES
+###############################################################################
+
+read_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Weekly Data CSV RAW/'
+write_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Data CSV Processed/'
+
 
 ###############################################################################
 #   CLASSES
 ###############################################################################
 
+class Building(object):
+    
+    '''
+    This class stores the building data as DataFrame. Give it the input file to
+    load the CSV. If pre_loaded is true, it assumes CSV is already properly
+    formatted, not raw data.
+    '''
+    
+    def __init__(self, input_file, pre_loaded = False):
+        
+        offices = []
+        
+        if pre_loaded == True:
+            data = pd.read_csv(input_file)
+            self.data = data
+        else:
+            test = []
+
+            for ii in range(52):
+                d1 = unwrap(input_file, row = ii)[0]
+                test.append(d1)
+            
+            df = pd.concat(test)
+            
+            p = np.array(df['Price']).astype(float)
+            new_column = df['Time Used']*p
+            df['Revenue'] = pd.Series(new_column, index = df.index)
+            df = df.sort_values(['Name','Month','Date'])
+            
+            self.data = df
+            df.to_csv(path_or_buf = write_dir+input_file)
+            
+        for office in self.data['Name']:
+            offices.append(self.data[self.data['Name'] == office])
+            
+        self.offices = offices
 
 
 ###############################################################################
@@ -36,7 +79,7 @@ def raw_parse(filename, row = 0):
         
     '''
     input_file = filename
-    data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Weekly Data CSV/'+input_file, encoding = 'latin-1')
+    data = pd.read_csv(read_dir+input_file, encoding = 'latin-1')
     d = data.iloc[row][0]
     d = d.replace(u'\xa0', ' ')  #Encoding is messed up, 
                                  #this character \xa0 causes problems if not removed
@@ -194,18 +237,6 @@ def convert_month(month):
 
 input_file = 'SOMETEST'+'.csv'
 
-print("STARTING!")
-t1 = TT.clock()
+d1 = Building(input_file)
 
-test = []
 
-for ii in range(52):
-    d1 = unwrap(input_file, row = ii)[0]
-    test.append(d1)
-
-df = pd.concat(test)
-
-print ("DONE!")
-print ('This took: ' + str(TT.clock()-t1) + ' seconds')
-
-print(df)
