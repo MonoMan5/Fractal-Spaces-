@@ -17,7 +17,7 @@ import time as TT
 ###############################################################################
 
 read_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Weekly Data CSV RAW/'
-write_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Data CSV Processed/'
+write_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/TEST/'
 
 
 ###############################################################################
@@ -91,6 +91,7 @@ def raw_parse(filename, row = 0):
     d = d.replace(u'\xa0', ' ')  #Encoding is messed up, 
                                  #this character \xa0 causes problems if not removed
     d = d.replace(u'åÊ', ' ')
+    d = d.replace(u'Œæ', ' ')
     
    
     months_30 = ['Sep', 'Apr', 'Jun', 'Nov']
@@ -99,7 +100,7 @@ def raw_parse(filename, row = 0):
     
     date = Word( alphas ) + Word(nums) +'-' + Word( alphas ) + Word(nums) + pp.Suppress(',') + pp.Suppress(Word(nums))
     location = Word(pp.alphanums+'-()#.') + pp.OneOrMore( ~pp.LineStart() + Word( pp.alphanums+'-()#.' )) 
-    price_loc = pp.Suppress('$') + Word(nums) + pp.Suppress('/') + Word(alphas) + location
+    price_loc = pp.Suppress('$') + Word(nums+'.') + pp.Suppress('/') + Word(alphas+'-') + location
     
     week_date = date.parseString(d)
     prices_loc = price_loc.searchString(d)
@@ -247,13 +248,12 @@ def convert_month(month):
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-a = os.listdir(read_dir)
+#a = os.listdir(read_dir)
 
-for file in a:
-    d1 = Building(file)
-    print ('Processed ' + file + ' !')
+file ='prime_office_centers_wall_st_12th_fl_10005_1_year_back_from_24_06_17 (1).csv'
 
-print('Done!')
+d1 = Building(file)
+
 
 
 
