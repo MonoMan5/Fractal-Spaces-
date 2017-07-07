@@ -17,7 +17,7 @@ import time as TT
 ###############################################################################
 
 read_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Weekly Data CSV RAW/'
-write_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/TEST/'
+write_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Data CSV Processed/'
 
 
 ###############################################################################
@@ -29,26 +29,35 @@ class Building(object):
     '''
     This class stores the building data as DataFrame. Give it the input file to
     load the CSV. If pre_loaded is true, it assumes CSV is already properly
-    formatted, not raw data.
+    formatted, not raw data. Get_offices loads each individual office into an
+    array stored in the object. Only_hours drops all periods other than hours.
     '''
     
-    def __init__(self, input_file, pre_loaded = False):
+    def __init__(self, input_file, pre_loaded = False, get_offices = False, only_hours = True):
         
         offices = []
+        time_1 = list(range(1,365))
+        slice1 = time_1[:189]
+        slice2 = time_1[189:]
+        
+        timeline = slice2 + slice1
         
         if pre_loaded == True:
-            data = pd.read_csv(input_file)
+            data = pd.read_csv(write_dir+input_file)
             self.data = data
         else:
             test = []
 
             for ii in range(52):
-                d1 = unwrap(input_file, row = ii)[0]
+                d1 = unwrap(input_file, row = ii)
+                number_of_offices = d1[2]
+                d1 = d1[0]
                 test.append(d1)
             
             df = pd.concat(test)
             
             p=[]
+            
             
             for ppp in df['Time Used']:
                 if ppp == 'Closed':
@@ -61,13 +70,24 @@ class Building(object):
             df['Revenue'] = pd.Series(new_column, index = df.index)
             df = df.sort_values(['Name','Month','Date'])
             
+            if number_of_offices > 1:
+                for ii in range(number_of_offices-1):
+                    timeline = timeline+timeline
+                
+            df['Timeline'] = pd.Series(timeline, index = df.index)
+            df = df.sort_values(['Name','Timeline'])
+            
+            if only_hours == True:              #Set to false in order to keep months
+                df = df[df['Period']=='hour']
+            
             self.data = df
             df.to_csv(path_or_buf = write_dir+input_file)
             
-        for office in self.data['Name']:
-            offices.append(self.data[self.data['Name'] == office])
+        if get_offices == True:
+            for office in self.data['Name']:
+                offices.append(self.data[self.data['Name'] == office])
             
-        self.offices = offices
+            self.offices = offices
 
 
 ###############################################################################
@@ -92,6 +112,7 @@ def raw_parse(filename, row = 0):
                                  #this character \xa0 causes problems if not removed
     d = d.replace(u'åÊ', ' ')
     d = d.replace(u'Œæ', ' ')
+    d = d.replace(u'Î¾', ' ')
     
    
     months_30 = ['Sep', 'Apr', 'Jun', 'Nov']
@@ -99,7 +120,7 @@ def raw_parse(filename, row = 0):
     #AMtime = Word(nums+':') + pp.Or(pp.Literal('AM'),pp.Literal('PM')) on standby
     
     date = Word( alphas ) + Word(nums) +'-' + Word( alphas ) + Word(nums) + pp.Suppress(',') + pp.Suppress(Word(nums))
-    location = Word(pp.alphanums+'-()#.') + pp.OneOrMore( ~pp.LineStart() + Word( pp.alphanums+'-()#.' )) 
+    location = Word(pp.alphanums+'-()#/.') + pp.OneOrMore( ~pp.LineStart() + Word( pp.alphanums+'-()#/.' )) 
     price_loc = pp.Suppress('$') + Word(nums+'.') + pp.Suppress('/') + Word(alphas+'-') + location
     
     week_date = date.parseString(d)
@@ -170,6 +191,8 @@ def unwrap(input_file, row = 0):
     prices = RP[1]
     mess = RP[2]
     
+    number_of_offices = len(prices) 
+    
     for ii in range(len(prices)):
         week_arr = []
         for week in mess:
@@ -233,7 +256,7 @@ def unwrap(input_file, row = 0):
     
     d = pd.DataFrame(d, index = d['Month'])  #Choose index as appropriate
     
-    return d,which_week
+    return d,which_week, number_of_offices
 
 def convert_month(month):
     
@@ -243,16 +266,42 @@ def convert_month(month):
     
     return converted
     
+def get_address(filename_string):
+    
+    sample = filename_string
+    sample = sample[:len(sample)-4]
+    
+    zipcode_pp = Word(nums,min=5)+pp.Suppress('_')
+    zipp = zipcode_pp.searchString(sample)
+    zipcode = zipp[0][0]
+    
+    address1 = pp.OneOrMore(Word(pp.alphanums+'()')+pp.Suppress('_')+ ~Word(zipcode,min = 5))
+    address2 = Word(pp.alphanums+'()') + pp.Suppress('_') + pp.Suppress(Word(zipcode,min = 5))
+    
+    add1 = list(address1.parseString(sample))
+    add2 = list(address2.searchString(sample))
+    
+    add1.append(add2[0][0])
+    
+    address = " ".join(add1)
+    
+    return address, zipcode
+
 
 ###############################################################################
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-#a = os.listdir(read_dir)
+a = os.listdir(read_dir)
 
-file ='prime_office_centers_wall_st_12th_fl_10005_1_year_back_from_24_06_17 (1).csv'
+file = 'caseworks_union_square_80_5th_ave_1201_ny_10011_1_year_back_from_24_06_17.csv'
 
-d1 = Building(file)
+#d = raw_parse(file,row = 5)
+
+d = Building(file)
+
+print (d)
+
 
 
 
