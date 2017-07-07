@@ -11,16 +11,23 @@ import matplotlib.pyplot as plt
 
 from sklearn import linear_model
 from sklearn import metrics
-from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures, scale, normalize
 
-
 import numpy as np
-import statistics as stat
-from mpl_toolkits.mplot3d import Axes3D
 import math
 import random
+
+import pyparsing as pp
+from pyparsing import Word,alphas,nums
+
+
+###############################################################################
+#   GLOBAL VARIABLES
+###############################################################################
+
+read_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Weekly Data CSV RAW/'
+write_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Data CSV Processed/'
 
 ###############################################################################
 # CLASSES
@@ -370,36 +377,63 @@ def gen_2Dlinfit(X1,X2,Z,name):
     plt.savefig(name + ' - 2D Linear Fit.jpg')
     plt.show()
     
+def get_address(filename_string):
+    
+    sample = filename_string
+    sample = sample[:len(sample)-4]
+    
+    zipcode_pp = Word(nums,min=5)+pp.Suppress('_')
+    zipp = zipcode_pp.searchString(sample)
+    zipcode = zipp[0][0]
+    
+    address1 = pp.OneOrMore(Word(pp.alphanums+'()')+pp.Suppress('_')+ ~Word(zipcode,min = 5))
+    address2 = Word(pp.alphanums+'()') + pp.Suppress('_') + pp.Suppress(Word(zipcode,min = 5))
+    
+    add1 = list(address1.parseString(sample))
+    add2 = list(address2.searchString(sample))
+    
+    add1.append(add2[0][0])
+    
+    address = " ".join(add1)
+    
+    return address, zipcode
     
 
 ###############################################################################
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-'''
-input_file = '419-Park-Ave-S-2nd-Floor-NY-10016_1-year-till_jun-24-17' + '.csv'
+a = os.listdir(write_dir)
 
-data = pd.read_csv('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/' + input_file)
-time_slots  = data['Time difference'] = data['Time difference'].apply(lambda x: x/60)
+revenues = []
+names = []
+zips = []
 
-series = RevenueDist(time_slots,75)
-deg = 3
+for file in a:
+    res = get_address(file)
+    zips.append(int(res[1]))
+    data = pd.read_csv(write_dir+file)
+    total = data['Revenue'].sum()
+    revenues.append(total)
+    names.append(res[0])
 
-Xp = series.data_frame['Time Slot Duration']
-Yp = series.data_frame.cumsum()['Annual Revenue']
+k = pd.Series(revenues, index = names)
 
-Xp, Yp = scale(Xp), scale (Yp)
 
-X = np.transpose(np.matrix(Xp))
-#Y = np.transpose(np.matrix(Yp))
-Y = Yp
+d ={'Zip':zips,
+    'Revenue': revenues}
 
-plt.plot(X,Y,'--r')
-plt.grid()
-plt.show()
-'''
+d = pd.DataFrame(d,index = names)
 
-KPI = KPITable()
-d = KPI.get_KPI('Current inventory (SF)')[0]
+print(d)
+print(d.mode())
 
+k = d[d['Zip'] != 10018]
+
+print(k)
+print(k.mode())
+
+print(len(d[d['Zip']==10018]))
+print(len(k[k['Zip']==10001]))
+print(len(k[k['Zip']==10016]))
 
