@@ -6,6 +6,11 @@ Created on Fri Jun 23 00:38:51 2017
 """
 
 import os
+import sys
+
+sys.path.append('C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/')
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -20,6 +25,7 @@ import random
 
 import pyparsing as pp
 from pyparsing import Word,alphas,nums
+import liquidspacetextwrangler as ltw
 
 
 ###############################################################################
@@ -28,6 +34,7 @@ from pyparsing import Word,alphas,nums
 
 read_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Weekly Data CSV RAW/'
 write_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Data CSV Processed/'
+am_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace Raw Text/Building Data Amenities/'
 
 ###############################################################################
 # CLASSES
@@ -376,28 +383,7 @@ def gen_2Dlinfit(X1,X2,Z,name):
     
     plt.savefig(name + ' - 2D Linear Fit.jpg')
     plt.show()
-    
-def get_address(filename_string):
-    
-    sample = filename_string
-    sample = sample[:len(sample)-4]
-    
-    zipcode_pp = Word(nums,min=5)+pp.Suppress('_')
-    zipp = zipcode_pp.searchString(sample)
-    zipcode = zipp[0][0]
-    
-    address1 = pp.OneOrMore(Word(pp.alphanums+'()')+pp.Suppress('_')+ ~Word(zipcode,min = 5))
-    address2 = Word(pp.alphanums+'()') + pp.Suppress('_') + pp.Suppress(Word(zipcode,min = 5))
-    
-    add1 = list(address1.parseString(sample))
-    add2 = list(address2.searchString(sample))
-    
-    add1.append(add2[0][0])
-    
-    address = " ".join(add1)
-    
-    return address, zipcode
-    
+        
 
 ###############################################################################
 #   MAIN PROGRAM BODY
@@ -408,6 +394,70 @@ a = os.listdir(write_dir)
 revenues = []
 names = []
 zips = []
+
+
+DF = []
+
+
+
+
+for file in a:
+    res = ltw.get_address(file)
+    zips.append(int(res[1]))
+    data = pd.read_csv(write_dir+file)
+    total = data['Revenue'].sum()
+    revenues.append(total)
+    names.append(res[0])
+
+for file in a:
+
+    DF.append(pd.read_csv(write_dir + file))
+
+for df in DF:
+    cleaned = []
+    for time in df['Time Used']:
+        if time == 'Closed':
+            cleaned.append(2)
+        else:
+            cleaned.append(time)
+    df['Time Used'] = cleaned
+    print(df)
+
+
+for df in DF:
+    occupancy = []
+    for time in df['Time Used']:
+        if time == 2:
+            occupancy.append(time)
+        elif math.isnan(time) or time == 0 :
+            occupancy.append(False)
+        else:
+            occupancy.append(True)
+    df['Occupancy'] = occupancy
+    print(df)
+
+
+'''
+for ii in range(len(DF)):
+        build_sums = []
+        for time in timeline:
+           k = DF[ii]
+           k = k[k['Timeline'] == time]
+           s = k.sum(0)['Revenue']
+           if s==None:
+               s = 0
+           build_sums.append(s)
+       
+        plt.hist(build_sums, bins = 40)
+        plt.grid()
+        plt.show()
+            
+'''
+
+
+'''
+
+filename = 'BUILDING_DETAILS_amenities_address_rating_etc Amar copy'
 
 for file in a:
     res = get_address(file)
@@ -423,17 +473,33 @@ k = pd.Series(revenues, index = names)
 d ={'Zip':zips,
     'Revenue': revenues}
 
-d = pd.DataFrame(d,index = names)
+data = pd.DataFrame(d)
+amens = pd.read_csv(am_dir+filename+'.csv')
+amens = amens.sort_values(['Name of Building'])
 
-print(d)
-print(d.mode())
+amens['Revenue'] = data['Revenue']
 
-k = d[d['Zip'] != 10018]
+data = pd.DataFrame(d, index = names)
 
-print(k)
-print(k.mode())
+amens = amens[amens['Revenue']<1000000]
+amens = amens.sort_values('Zip Code')
 
-print(len(d[d['Zip']==10018]))
-print(len(k[k['Zip']==10001]))
-print(len(k[k['Zip']==10016]))
 
+summed = []
+
+for am in amens['Zip Code']:
+    d = amens[amens['Zip Code']==am]
+    summed.append(d.sum(0)['Revenue'])
+    
+plt.bar(list(amens['Zip Code']), summed)
+plt.grid()
+plt.title('Revenue per Zipcode')
+plt.xlabel('Zipcode')
+plt.ylabel('Revenue ($)')
+plt.show()
+ 
+max_zip = amens['Zip Code'][summed.index(max(summed))]
+print(max(summed),max_zip)
+
+print(amens.corr())
+'''
