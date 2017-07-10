@@ -11,6 +11,7 @@ import pyparsing as pp
 from pyparsing import Word,alphas,nums
 import numpy as np
 import time as TT
+import math
 
 ###############################################################################
 #   GLOBAL VARIABLES
@@ -41,6 +42,7 @@ class Building(object):
         slice2 = time_1[189:]
         
         timeline = slice2 + slice1
+        timeline_var = timeline
         
         if pre_loaded == True:
             data = pd.read_csv(write_dir+input_file)
@@ -57,6 +59,26 @@ class Building(object):
             df = pd.concat(test)
             
             p=[]
+            cleaned = []
+            cleaned_2 = []
+            
+            for time in df['Time Used']:                
+                if time == 'Closed':
+                    cleaned.append(False)
+                else:
+                    cleaned.append(time)
+            
+            for time in cleaned:
+                if time == False:
+                    cleaned_2.append(None)
+                elif math.isnan(time) or time == 0:
+                    cleaned_2.append(False)
+                else:
+                    cleaned_2.append(True)
+                    
+            
+            df['Occupancy'] = pd.Series(cleaned_2, index = df.index)
+            
             
             
             for ppp in df['Time Used']:
@@ -72,9 +94,9 @@ class Building(object):
             
             if number_of_offices > 1:
                 for ii in range(number_of_offices-1):
-                    timeline = timeline+timeline
+                    timeline_var = timeline_var+timeline
                 
-            df['Timeline'] = pd.Series(timeline, index = df.index)
+            df['Timeline'] = pd.Series(timeline_var, index = df.index) #Sorts by time
             df = df.sort_values(['Name','Timeline'])
             
             if only_hours == True:              #Set to false in order to keep months
@@ -292,15 +314,17 @@ def get_address(filename_string):
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-a = os.listdir(read_dir)
+if __name__ == '__main__':
 
-file = 'caseworks_union_square_80_5th_ave_1201_ny_10011_1_year_back_from_24_06_17.csv'
-
-#d = raw_parse(file,row = 5)
-
-d = Building(file)
-
-print (d)
+    a = os.listdir(read_dir)
+    
+    for file in a:
+    
+        d = Building(file)
+    
+        print ("Done with " + file)
+    
+    print('Done')
 
 
 
