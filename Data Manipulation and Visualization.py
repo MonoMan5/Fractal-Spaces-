@@ -108,7 +108,7 @@ class BuildingHist(object):
             
             fig = plt.figure()
             fig.suptitle('Building Data - Distribution of Days', fontsize=15)
-            cols = math.ceil((len(self.offices)/3)) +1
+            cols = math.ceil((len(self.offices)/3))+1
             ax1 = plt.subplot2grid((3,cols),(0,0),rowspan = 3)
             ax1.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
             plt.axvline(self.mean, color ='r')
@@ -121,17 +121,20 @@ class BuildingHist(object):
             cc = 1
             rr = 0
             
-            for ii in range(cols):
+            for ii in range(len(self.offices)):
                 
                 axarray.append(plt.subplot2grid((3,cols),(rr,cc)))
-                rr+=1
-                if rr == 2:
-                    cc+=1
-                    rr = 0
+              
+                
                 axarray[ii].hist(self.offices[ii].days_numerical,bins = [1,2,3,4,5,6,7])
                 plt.axvline(self.offices[ii].mean, color ='r')
                 plt.title(self.offices[ii].name)
                 plt.grid()
+                if rr == 2:
+                     cc+=1
+                     rr = 0
+                else:
+                    rr+=1
           
             plt.tight_layout()
             plt.subplots_adjust(top=0.85)
@@ -549,11 +552,10 @@ A = building_const(write_dir)
 
 
 
-k = A[3]
+for k in A:
 
-k.load_offices()
-k.offices_loaded = True
-k.plot()
+    k.load_offices()
+    k.plot()
 
 '''
 modes = []
