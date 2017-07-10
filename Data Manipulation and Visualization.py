@@ -38,20 +38,14 @@ am_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace
 # CLASSES
 ###############################################################################
 
-class BuildingHist(object):
+class OfficeHist(object):
     
-    def __init__(self, frame):
-        
-        offices = []
-        
-        raw = frame[0][frame[0]['Occupancy'] == True]
-        
-        for office in set(raw['Name']):
-            off = raw[raw['Name']==office]
-            offices.append((off,office))
-        
-        self.offices = offices
-        
+    '''
+    Builds an office histogram object, with the distribution of occupancy over
+    days for a particular office.
+    '''
+    
+    def __init__(self,frame):
         a = frame[0][frame[0]['Occupancy'] == True]
         a = a.sort_values(['Day'])
         
@@ -77,7 +71,57 @@ class BuildingHist(object):
         self.name = frame[1]
         self.mean = mean
         self.mode = m
+        
+        
+        
+    def load_offices(self):
+        print('Error: Already an Office Object!')
+    
+    def plot(self):
+        
+        if self.empty == True:
+            
+            print('No booked days!')
+        
+        else:
+            
+            plt.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
+            plt.title(self.name[:30])
+            plt.axvline(self.mean, color ='r')
+            plt.xlabel('Day of the week')
+            plt.ylabel('Frequency (days)')
+            plt.grid()
+            plt.show()
+            
+            print('The sample mean is ' +str(self.mean))
+            if self.mode == None :
+                print('No unique mode!')
+            else:
+                print('The sample mode is ' + str(self.mode))
+
+
+class BuildingHist(OfficeHist):
+    
+    '''
+    Extends the Office hist class, this is a Building object containing 
+    multiple offices inside.
+    '''
+    
+    def __init__(self, frame):
+        
+        offices = []
+        
+        raw = frame[0][frame[0]['Occupancy'] == True]
+        
+        for office in set(raw['Name']):
+            off = raw[raw['Name']==office]
+            offices.append((off,office))
+        
+        self.offices = offices
         self.offices_loaded = False
+        
+        super().__init__(frame)
+        
     
     def load_offices(self):
         
@@ -104,9 +148,9 @@ class BuildingHist(object):
             
             print('No booked days!')
         
-        elif self.offices_loaded == True:
+        elif self.offices_loaded == True and len(self.offices)>1:
             
-            fig = plt.figure()
+            fig = plt.figure(figsize=(6,6))
             fig.suptitle('Building Data - Distribution of Days', fontsize=15)
             cols = math.ceil((len(self.offices)/3))+1
             ax1 = plt.subplot2grid((3,cols),(0,0),rowspan = 3)
@@ -114,7 +158,7 @@ class BuildingHist(object):
             plt.axvline(self.mean, color ='r')
             plt.xlabel('Day of the week')
             plt.ylabel('Frequency (days)')
-            plt.title(self.name)
+            plt.title(self.name[:30])
             plt.grid()
             axarray = []
             
@@ -148,73 +192,9 @@ class BuildingHist(object):
         
         else:
             
-            plt.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
-            plt.title(self.name)
-            plt.xlabel('Day of the week')
-            plt.ylabel('Frequency (days)')
-            plt.grid()
-            plt.show()
+            super().plot()
             
-            print('The sample mean is ' +str(self.mean))
-            if self.mode == None :
-                print('No unique mode!')
-            else:
-                print('The sample mode is ' + str(self.mode))
-       
 
-class OfficeHist(BuildingHist):
-    
-    def __init__(self,frame):
-        a = frame[0][frame[0]['Occupancy'] == True]
-        a = a.sort_values(['Day'])
-        
-        b = list(a['Day'])
-        a = list(map(lambda x: day_number(x),b))
-        
-        if len(a) == 0:
-            print(frame[1] + ' is Empty!')
-            self.empty = True
-            pass
-        else:
-            self.empty = False
-        
-        mean = np.mean(a)
-        
-        try:
-            m = mode(b)
-        except StatisticsError:
-            m = None
-        
-        self.days_numerical = a
-        self.days = b
-        self.name = frame[1]
-        self.mean = mean
-        self.mode = m
-        
-        
-    def load_offices(self):
-        print('Error: Already an Office Object!')
-    
-    def plot(self):
-        
-        if self.empty == True:
-            
-            print('No booked days!')
-        
-        else:
-            
-            plt.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
-            plt.title(self.name)
-            plt.xlabel('Day of the week')
-            plt.ylabel('Frequency (days)')
-            plt.grid()
-            plt.show()
-            
-            print('The sample mean is ' +str(self.mean))
-            if self.mode == None :
-                print('No unique mode!')
-            else:
-                print('The sample mode is ' + str(self.mode))
                 
                 
 class Tickers(object):
@@ -549,7 +529,6 @@ def building_const(directory):
 
 
 A = building_const(write_dir)
-
 
 
 for k in A:
