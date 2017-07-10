@@ -22,11 +22,9 @@ from sklearn.preprocessing import PolynomialFeatures, scale, normalize
 import numpy as np
 import math
 import random
+from statistics import mode, StatisticsError
 
-import pyparsing as pp
-from pyparsing import Word,alphas,nums
 import liquidspacetextwrangler as ltw
-
 
 ###############################################################################
 #   GLOBAL VARIABLES
@@ -40,47 +38,181 @@ am_dir = 'C:/Users/Amar Sehic/Documents/Fractal/Python Web Scrapping/Liquidspace
 # CLASSES
 ###############################################################################
 
-class RevenueDist(object):
+class BuildingHist(object):
     
-    """
-    Object that takes in time difference data of slots and creates a pandas dataframe,
-    which has the form (slot duration, annual revenue from slot).
-    """
+    def __init__(self, frame):
+        
+        offices = []
+        
+        raw = frame[0][frame[0]['Occupancy'] == True]
+        
+        for office in set(raw['Name']):
+            off = raw[raw['Name']==office]
+            offices.append((off,office))
+        
+        self.offices = offices
+        
+        a = frame[0][frame[0]['Occupancy'] == True]
+        a = a.sort_values(['Day'])
+        
+        b = list(a['Day'])
+        a = list(map(lambda x: day_number(x),b))
+        
+        if len(a) == 0:
+            print(frame[1] + ' is Empty!')
+            self.empty = True
+            pass
+        else:
+            self.empty = False
+        
+        mean = np.mean(a)
+        
+        try:
+            m = mode(b)
+        except StatisticsError:
+            m = None
+        
+        self.days_numerical = a
+        self.days = b
+        self.name = frame[1]
+        self.mean = mean
+        self.mode = m
+        self.offices_loaded = False
     
-    def __init__(self, time_slots, price_per_hour):
-        self.price_per_hour = price_per_hour
+    def load_offices(self):
         
-        times = np.array([i for i in time_slots if not math.isnan(i) ])
-        unique, counts = np.unique(times, return_counts = True)
+        if self.offices_loaded == False and self.empty == False:
         
-        revenue_dist = list(unique*counts*self.price_per_hour)
-        unique = list(unique)
-        tuples = list(zip(unique, revenue_dist))
-        
-        labels = ['Time Slot Duration','Annual Revenue']
-        self.data_frame = pd.DataFrame.from_records(tuples, columns = labels)
-        
-    def get_plot(self):     #Plot Annual Rev vs Time Slots
-        
-        f = plt.figure(figsize=(8,5))
-        ax = plt.subplot()
-        ax.plot(self.data_frame['Time Slot Duration'],self.data_frame['Annual Revenue'], '--r')
-        plt.title("Annual Revenue vs. Slot Duration")
-        plt.xlabel("Time Slot Duration (hours)")
-        plt.ylabel("Annual Revenue ($)")
-        plt.grid()
-        plt.show()
+            office_objects = []
+            offices = self.offices
+            
+            for of in offices:
+                d = OfficeHist(of)
+                office_objects.append(d)
+            
+            self.offices = office_objects
+            self.offices_loaded = True
+            
+        elif self.offices_loaded == True:
+            print('Error: Offices are already loaded!')
+        else:
+            print('Building is not occupied!')
     
-    def get_cumplot(self):  #Plot Cumulative Annual Rev vs Time Slots
+    def plot(self):
         
-        f = plt.figure(figsize=(8,5))
-        ax = plt.subplot()
-        ax.plot(self.data_frame['Time Slot Duration'],self.data_frame.cumsum()['Annual Revenue'], 'b')
-        plt.title("Cumulative Annual Revenue vs. Slot Duration")
-        plt.xlabel("Time Slot Duration (hours)")
-        plt.ylabel("Cumulative Annual Revenue ($)")
-        plt.grid()
-        plt.show()
+        if self.empty == True:
+            
+            print('No booked days!')
+        
+        elif self.offices_loaded == True:
+            
+            fig = plt.figure()
+            fig.suptitle('Building Data - Distribution of Days', fontsize=15)
+            cols = math.ceil((len(self.offices)/3)) +1
+            ax1 = plt.subplot2grid((3,cols),(0,0),rowspan = 3)
+            ax1.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
+            plt.axvline(self.mean, color ='r')
+            plt.xlabel('Day of the week')
+            plt.ylabel('Frequency (days)')
+            plt.title(self.name)
+            plt.grid()
+            axarray = []
+            
+            cc = 1
+            rr = 0
+            
+            for ii in range(cols):
+                
+                axarray.append(plt.subplot2grid((3,cols),(rr,cc)))
+                rr+=1
+                if rr == 2:
+                    cc+=1
+                    rr = 0
+                axarray[ii].hist(self.offices[ii].days_numerical,bins = [1,2,3,4,5,6,7])
+                plt.axvline(self.offices[ii].mean, color ='r')
+                plt.title(self.offices[ii].name)
+                plt.grid()
+          
+            plt.tight_layout()
+            plt.subplots_adjust(top=0.85)
+            plt.show()
+            
+            print('The sample mean is ' +str(self.mean))
+            if self.mode == None :
+                print('No unique mode!')
+            else:
+                print('The sample mode is ' + str(self.mode))
+        
+        else:
+            
+            plt.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
+            plt.title(self.name)
+            plt.xlabel('Day of the week')
+            plt.ylabel('Frequency (days)')
+            plt.grid()
+            plt.show()
+            
+            print('The sample mean is ' +str(self.mean))
+            if self.mode == None :
+                print('No unique mode!')
+            else:
+                print('The sample mode is ' + str(self.mode))
+       
+
+class OfficeHist(BuildingHist):
+    
+    def __init__(self,frame):
+        a = frame[0][frame[0]['Occupancy'] == True]
+        a = a.sort_values(['Day'])
+        
+        b = list(a['Day'])
+        a = list(map(lambda x: day_number(x),b))
+        
+        if len(a) == 0:
+            print(frame[1] + ' is Empty!')
+            self.empty = True
+            pass
+        else:
+            self.empty = False
+        
+        mean = np.mean(a)
+        
+        try:
+            m = mode(b)
+        except StatisticsError:
+            m = None
+        
+        self.days_numerical = a
+        self.days = b
+        self.name = frame[1]
+        self.mean = mean
+        self.mode = m
+        
+        
+    def load_offices(self):
+        print('Error: Already an Office Object!')
+    
+    def plot(self):
+        
+        if self.empty == True:
+            
+            print('No booked days!')
+        
+        else:
+            
+            plt.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
+            plt.title(self.name)
+            plt.xlabel('Day of the week')
+            plt.ylabel('Frequency (days)')
+            plt.grid()
+            plt.show()
+            
+            print('The sample mean is ' +str(self.mean))
+            if self.mode == None :
+                print('No unique mode!')
+            else:
+                print('The sample mode is ' + str(self.mode))
+                
                 
 class Tickers(object):
     
@@ -306,28 +438,6 @@ def lin_reg(X,Y,deg=1):
     
     return m,b,R2,lm
     
-def gen_hist(X, name):
-    
-    """
-    Generates a histogram for the array X, saves it with the specified name
-    
-    """
-    
-    rows = X
- 
-    f2, axarr2 = plt.subplots(1, len(rows), sharey = True)
-       
-    for i in range(len(rows)):
-        axarr2[i].hist(rows[i], bins = 30)
-        axarr2[i].set_title('Histogram ' + str(i))
-        axarr2[i].grid()
-    
-    f2.add_subplot(111,frameon=False)
-    plt.tick_params(labelcolor='none', top='off', bottom='off', left='off', right='off')
-    plt.ylabel("Frequency")
-    
-    plt.savefig(name + ' - Histograms.jpg')
-    plt.show()
 
 def gen_lin_fit(X, Y, name):
     
@@ -383,58 +493,87 @@ def gen_2Dlinfit(X1,X2,Z,name):
     
     plt.savefig(name + ' - 2D Linear Fit.jpg')
     plt.show()
+
+def day_number(string):
+    '''
+    Convert day name into number of day in week.
+    '''
+    
+    days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    
+    p = days.index(string)
+    
+    return p+1
         
+def building_const(directory):
+    
+    '''
+    Builds a bunch of building histogram objects from specified directory and
+    returns them in an array.
+    '''
+    
+    a = os.listdir(directory)
+
+    revenues = []
+    names = []
+    zips = []
+    
+    
+    DF = []
+    BHists = []
+    
+    
+    for file in a:
+        res = ltw.get_address(file)
+        zips.append(int(res[1]))
+        data = pd.read_csv(directory+file)
+        total = data['Revenue'].sum()
+        revenues.append(total)
+        names.append(res[0])
+    
+        DF.append((pd.read_csv(directory + file), res[0]))
+        
+    for df in DF:
+        BHists.append(BuildingHist(df))
+        
+    return BHists
+
+    
 
 ###############################################################################
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-a = os.listdir(write_dir)
 
-revenues = []
-names = []
-zips = []
-
-
-DF = []
+A = building_const(write_dir)
 
 
 
+k = A[3]
 
-for file in a:
-    res = ltw.get_address(file)
-    zips.append(int(res[1]))
-    data = pd.read_csv(write_dir+file)
-    total = data['Revenue'].sum()
-    revenues.append(total)
-    names.append(res[0])
+k.load_offices()
+k.offices_loaded = True
+k.plot()
 
-for file in a:
+'''
+modes = []
 
-    DF.append(pd.read_csv(write_dir + file))
+for k in A:
+    modes = modes + k.days_numerical
 
-for df in DF:
-    cleaned = []
-    for time in df['Time Used']:
-        if time == 'Closed':
-            cleaned.append(2)
-        else:
-            cleaned.append(time)
-    df['Time Used'] = cleaned
-    print(df)
+plt.hist(modes, bins = [1,2,3,4,5,6,7])
+plt.title('Aggregate over all buildings')
+plt.xlabel('Day of the week')
+plt.ylabel('Frequency (days)')
+plt.grid()
+plt.show()
 
+print(mode(modes))
+print(np.mean(modes))
+'''
 
-for df in DF:
-    occupancy = []
-    for time in df['Time Used']:
-        if time == 2:
-            occupancy.append(time)
-        elif math.isnan(time) or time == 0 :
-            occupancy.append(False)
-        else:
-            occupancy.append(True)
-    df['Occupancy'] = occupancy
-    print(df)
+            
+
 
 
 '''
@@ -451,11 +590,6 @@ for ii in range(len(DF)):
         plt.hist(build_sums, bins = 40)
         plt.grid()
         plt.show()
-            
-'''
-
-
-'''
 
 filename = 'BUILDING_DETAILS_amenities_address_rating_etc Amar copy'
 
