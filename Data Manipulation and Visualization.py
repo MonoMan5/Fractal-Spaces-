@@ -18,11 +18,13 @@ from sklearn import linear_model
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures, scale, normalize
+from sklearn.neighbors.kde import KernelDensity as KDE
 
 import numpy as np
 import math
 import random
 from statistics import mode, StatisticsError
+from scipy.stats import pearsonr as PRS
 
 import liquidspacetextwrangler as ltw
 
@@ -46,41 +48,52 @@ class OfficeHist(object):
     '''
     
     def __init__(self,frame):
+        
+        self.name = frame[1]
+        
         a = frame[0][frame[0]['Occupancy'] == True]
         a = a.sort_values(['Day'])
         
         days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-        days_dict = {}
+        days_dict = []
         
         for day in days:
             t = a[a['Day']==day]
             t = t['Time Used']
             t = pd.to_numeric(t, errors='coerce')
-            days_dict[day] = t.sum()
+            days_dict.append(t.sum())
+            
         
         self.time_dict = days_dict
         
+        dddd = days_dict
+        values = dddd
+        maximum = max(values)
+        max_day = values.index(maximum)+1
+        
+        self.profitable_day = max_day
+        self.hours = values
+        
         
         b = list(a['Day'])
-        a = list(map(lambda x: day_number(x),b))
+        ccc = list(map(lambda x: day_number(x),b))
         
-        if len(a) == 0:
+        if len(ccc) == 0:
             print(frame[1] + ' is Empty!')
             self.empty = True
             pass
         else:
             self.empty = False
         
-        mean = np.mean(a)
+        mean = np.mean(ccc)
         
         try:
             m = mode(b)
         except StatisticsError:
             m = None
         
-        self.days_numerical = a
+        self.days_numerical = ccc
         self.days = b
-        self.name = frame[1]
         self.mean = mean
         self.mode = m
         
@@ -97,12 +110,13 @@ class OfficeHist(object):
         
         else:
             
-            plt.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
+            plt.hist(self.days_numerical, bins = [1,2,3,4,5,6,7,8],normed = True,align = 'left')
             plt.title(self.name[:30])
             plt.axvline(self.mean, color ='r')
             plt.xlabel('Day of the week')
             plt.ylabel('Frequency (days)')
             plt.grid()
+            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Detailed Frequency per Building per Day/'+k.name + ' Frequency Detailed')
             plt.show()
             
             print('The sample mean is ' +str(self.mean))
@@ -119,15 +133,10 @@ class OfficeHist(object):
         
         else:
         
-            dd = self.time_dict
             ind = range(1,8)
-            values = [dd[i] for i in dd]
-            maximum = max(values)
-            max_day = values.index(maximum)+1
+            max_day = self.profitable_day 
             
-            self.profitable_day = max_day
-            
-            plt.bar(ind,values)
+            plt.bar(ind,self.hours)
             plt.title(self.name[:30])
             plt.xlabel('Day of the week')
             plt.ylabel('Hours Booked')
@@ -191,7 +200,7 @@ class BuildingHist(OfficeHist):
             fig.suptitle('Building Data - Distribution of Days', fontsize=15)
             cols = math.ceil((len(self.offices)/3))+1
             ax1 = plt.subplot2grid((3,cols),(0,0),rowspan = 3)
-            ax1.hist(self.days_numerical, bins = [1,2,3,4,5,6,7])
+            ax1.hist(self.days_numerical, bins = [1,2,3,4,5,6,7,8],normed = True,align = 'left')
             plt.axvline(self.mean, color ='r')
             plt.xlabel('Day of the week')
             plt.ylabel('Frequency (days)')
@@ -207,7 +216,7 @@ class BuildingHist(OfficeHist):
                 axarray.append(plt.subplot2grid((3,cols),(rr,cc)))
               
                 
-                axarray[ii].hist(self.offices[ii].days_numerical,bins = [1,2,3,4,5,6,7])
+                axarray[ii].hist(self.offices[ii].days_numerical,bins = [1,2,3,4,5,6,7,8],normed = True,align = 'left')
                 plt.axvline(self.offices[ii].mean, color ='r')
                 plt.title(self.offices[ii].name)
                 plt.grid()
@@ -219,6 +228,7 @@ class BuildingHist(OfficeHist):
           
             plt.tight_layout()
             plt.subplots_adjust(top=0.85)
+            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Detailed Frequency per Building per Day/'+k.name + ' Frequency Detailed')
             plt.show()
             
             print('The sample mean is ' +str(self.mean))
@@ -537,7 +547,7 @@ def building_const(directory):
     
     a = os.listdir(directory)
 
-    revenues = []
+
     names = []
     zips = []
     
@@ -549,9 +559,6 @@ def building_const(directory):
     for file in a:
         res = ltw.get_address(file)
         zips.append(int(res[1]))
-        data = pd.read_csv(directory+file)
-        total = data['Revenue'].sum()
-        revenues.append(total)
         names.append(res[0])
     
         DF.append((pd.read_csv(directory + file), res[0]))
@@ -561,56 +568,67 @@ def building_const(directory):
         
     return BHists
 
+def aggregate(show_time = True):
     
+    ll =[]
+
+    modes = []
+    
+    A = building_const(write_dir)
+    
+    for k in A:
+        
+        modes = modes + k.days_numerical
+    
+        ll.append(k.hours)
+        
+    agg = [sum(x) for x in zip(*ll)]   
+    
+    ind = [1,2,3,4,5,6,7]
+    
+    if show_time == True:
+        plt.bar(ind, agg, color = 'r', label = 'Hours')
+    plt.hist(modes, bins = [1,2,3,4,5,6,7,8], label = 'Frequency', align = 'left')
+    plt.legend()
+    plt.title('Aggregate over all buildings')
+    plt.xlabel('Day of the week')
+    plt.ylabel('Frequency/Hours Booked')
+    plt.grid()
+    plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Aggregated Data/'+ 'Building Aggregates')
+    plt.show()
+    
+    test = np.histogram(modes, bins = [1,2,3,4,5,6,7,8])[0]
+    
+    print('The Pearson Correlation Coefficient is : ' + str(PRS(agg,test)[0]))
+
 
 ###############################################################################
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-
-A = building_const(write_dir)
-
-
-for k in A:
-
+'''
     
-    k.duration_plot()
+    modes = k.days_numerical
+    agg = k.hours
+    ind = [1,2,3,4,5,6,7]
+    
+    f = plt.figure(figsize=(5,5))
+    plt.bar(ind, agg, color = 'r', label = 'Hours')
+    plt.hist(modes, bins = [1,2,3,4,5,6,7,8], label = 'Frequency', align = 'left')
+    plt.legend()
+    plt.title(k.name)
+    plt.xlabel('Day of the week')
+    plt.ylabel('Frequency/Hours Booked')
+    plt.grid()
+    plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/'+k.name + ' Freq vs Hours')
+    plt.show()
+    
+ '''   
+
+        
 
 '''
-modes = []
-
-for k in A:
-    modes = modes + k.days_numerical
-
-plt.hist(modes, bins = [1,2,3,4,5,6,7])
-plt.title('Aggregate over all buildings')
-plt.xlabel('Day of the week')
-plt.ylabel('Frequency (days)')
-plt.grid()
-plt.show()
-
-print(mode(modes))
-print(np.mean(modes))
-'''
-
-            
-
-
-
-'''
-for ii in range(len(DF)):
-        build_sums = []
-        for time in timeline:
-           k = DF[ii]
-           k = k[k['Timeline'] == time]
-           s = k.sum(0)['Revenue']
-           if s==None:
-               s = 0
-           build_sums.append(s)
-       
-        plt.hist(build_sums, bins = 40)
-        plt.grid()
-        plt.show()
+#Amenities comparison
 
 filename = 'BUILDING_DETAILS_amenities_address_rating_etc Amar copy'
 
