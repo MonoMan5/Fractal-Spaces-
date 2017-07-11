@@ -49,6 +49,18 @@ class OfficeHist(object):
         a = frame[0][frame[0]['Occupancy'] == True]
         a = a.sort_values(['Day'])
         
+        days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+        days_dict = {}
+        
+        for day in days:
+            t = a[a['Day']==day]
+            t = t['Time Used']
+            t = pd.to_numeric(t, errors='coerce')
+            days_dict[day] = t.sum()
+        
+        self.time_dict = days_dict
+        
+        
         b = list(a['Day'])
         a = list(map(lambda x: day_number(x),b))
         
@@ -98,6 +110,31 @@ class OfficeHist(object):
                 print('No unique mode!')
             else:
                 print('The sample mode is ' + str(self.mode))
+    
+    def duration_plot(self):
+        
+        if self.empty == True:
+            
+            print('No booked days!')
+        
+        else:
+        
+            dd = self.time_dict
+            ind = range(1,8)
+            values = [dd[i] for i in dd]
+            maximum = max(values)
+            max_day = values.index(maximum)+1
+            
+            self.profitable_day = max_day
+            
+            plt.bar(ind,values)
+            plt.title(self.name[:30])
+            plt.xlabel('Day of the week')
+            plt.ylabel('Hours Booked')
+            plt.grid()
+            plt.show()
+            
+            print('The mode is: ' + str(max_day))
 
 
 class BuildingHist(OfficeHist):
@@ -477,16 +514,19 @@ def gen_2Dlinfit(X1,X2,Z,name):
     plt.savefig(name + ' - 2D Linear Fit.jpg')
     plt.show()
 
-def day_number(string):
+def day_number(var):
     '''
-    Convert day name into number of day in week.
+    Convert day name into number of day in week and vice-versa.
     '''
     
     days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+
     
-    p = days.index(string)
+    p = days.index(var)
     
     return p+1
+
+    
         
 def building_const(directory):
     
@@ -533,8 +573,8 @@ A = building_const(write_dir)
 
 for k in A:
 
-    k.load_offices()
-    k.plot()
+    
+    k.duration_plot()
 
 '''
 modes = []
