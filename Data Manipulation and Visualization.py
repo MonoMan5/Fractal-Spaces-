@@ -44,7 +44,9 @@ class OfficeHist(object):
     
     '''
     Builds an office histogram object, with the distribution of occupancy over
-    days for a particular office.
+    days for a particular office. Duration plot gives the distribution of total
+    time per each day of the week. The slot distribution gives the distribution
+    of time slots over the year.
     '''
     
     def __init__(self,frame):
@@ -53,6 +55,30 @@ class OfficeHist(object):
         
         total_days = len(frame[0]['Timeline'])
         a = frame[0][frame[0]['Occupancy'] == True]
+        
+        time_dist = a[a['Time Used'] != 'Closed']['Time Used']
+        
+        if len(time_dist) != 0:
+           
+            time_dist = [math.ceil(float(i)) for i in time_dist]
+            
+            try:
+                time_mode = mode(time_dist)
+            except StatisticsError:
+                time_mode = None
+                
+            time_mean = np.mean(time_dist)
+            
+            time_hist = np.histogram(time_dist, bins = range(0,12), density = True)
+            self.time_hist = time_hist
+            self.time_dist = time_dist
+            self.time_mode = time_mode
+            self.time_mean = time_mean
+            
+        else:
+            self.time_hist = None
+            self.time_dist = None
+        
         
         if total_days != 0:
             probs = []
@@ -130,9 +156,9 @@ class OfficeHist(object):
             plt.title(self.name[:30])
             plt.axvline(self.mean, color ='r')
             plt.xlabel('Day of the week')
-            plt.ylabel('Frequency (days)')
+            plt.ylabel('Probability')
             plt.grid()
-            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Detailed Frequency per Building per Day/'+k.name + ' Frequency')
+            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Detailed Frequency per Building per Day/'+self.name + ' Frequency')
             plt.show()
             
             print('The sample mean is ' +str(self.mean))
@@ -161,6 +187,34 @@ class OfficeHist(object):
             plt.show()
             
             print('The mode is: ' + str(max_day))
+    
+    def slot_dist_plot(self):
+        
+        if self.empty == True:
+            
+            print('No booked days!')
+        
+        else:
+            
+            hist = self.time_dist   
+            bins = self.time_hist[1]
+            
+            plt.hist(hist, bins = bins, normed = True, align = 'left')
+            plt.title(self.name)
+            plt.axvline(self.time_mean, color ='r')
+            plt.xlabel('Hours Booked')
+            plt.ylabel('Probability')
+            plt.grid()
+            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Probability of hours booked/'+self.name + ' Probability Dist')
+            plt.show()
+            
+            print('The sample mean is ' +str(self.time_mean))
+            
+            if self.time_mode == None :
+                print('No unique mode!')
+            else:
+                print('The sample mode is ' + str(self.time_mode))
+            
 
 
 class BuildingHist(OfficeHist):
@@ -220,7 +274,7 @@ class BuildingHist(OfficeHist):
             ax1.hist(self.days_numerical, bins = [1,2,3,4,5,6,7,8],normed = True,align = 'left')
             plt.axvline(self.mean, color ='r')
             plt.xlabel('Day of the week')
-            plt.ylabel('Frequency (days)')
+            plt.ylabel('Probability')
             plt.title(self.name[:30])
             plt.grid()
             axarray = []
@@ -245,7 +299,7 @@ class BuildingHist(OfficeHist):
           
             plt.tight_layout()
             plt.subplots_adjust(top=0.85)
-            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Detailed Frequency per Building per Day/'+k.name + ' Frequency Detailed')
+            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Detailed Frequency per Building per Day/'+self.name + ' Frequency Detailed')
             plt.show()
             
             print('The sample mean is ' +str(self.mean))
@@ -586,46 +640,70 @@ def building_const(directory):
         
     return BHists
 
-def aggregate(show_time = True):
+def aggregate(data = 'days', show_time = True):
     
-    ll =[]
-
     modes = []
-    
+        
     A = building_const(write_dir)
     
-    for k in A:
+    if data == 'days':
+    
+        ll =[]
         
-        modes = modes + k.days_numerical
-    
-        ll.append(k.hours)
+        for k in A:
+            
+            modes = modes + k.days_numerical
         
-    agg = [sum(x) for x in zip(*ll)]   
+            ll.append(k.hours)
+            
+        agg = [sum(x) for x in zip(*ll)]   
+        
+        ind = [1,2,3,4,5,6,7]
+        
+        if show_time == True:
+            plt.bar(ind, agg, color = 'r', label = 'Hours')
+        plt.hist(modes, bins = [1,2,3,4,5,6,7,8], label = 'Frequency', align = 'left')
+        plt.legend()
+        plt.title('Aggregate over all buildings')
+        plt.xlabel('Day of the week')
+        plt.ylabel('Frequency/Hours Booked')
+        plt.grid()
+        plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Aggregated Data/'+ 'Building Aggregates')
+        plt.show()
+        
+        test = np.histogram(modes, bins = [1,2,3,4,5,6,7,8])[0]
+        
+        print('The Pearson Correlation Coefficient is : ' + str(PRS(agg,test)[0]))
     
-    ind = [1,2,3,4,5,6,7]
-    
-    if show_time == True:
-        plt.bar(ind, agg, color = 'r', label = 'Hours')
-    plt.hist(modes, bins = [1,2,3,4,5,6,7,8], label = 'Frequency', align = 'left')
-    plt.legend()
-    plt.title('Aggregate over all buildings')
-    plt.xlabel('Day of the week')
-    plt.ylabel('Frequency/Hours Booked')
-    plt.grid()
-    plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Aggregated Data/'+ 'Building Aggregates')
-    plt.show()
-    
-    test = np.histogram(modes, bins = [1,2,3,4,5,6,7,8])[0]
-    
-    print('The Pearson Correlation Coefficient is : ' + str(PRS(agg,test)[0]))
+    if data == 'hours':
+        
+        for k in A:
+            
+            if k.time_dist != None:
+                modes = modes + k.time_dist
+            
+        plt.hist(modes, bins = [1,2,3,4,5,6,7,8,9,10,11], normed = True, label = 'Probability', align = 'left')
+        plt.legend()
+        plt.title('Aggregate probability over all buildings')
+        plt.axvline(np.mean(modes), color ='r')
+        plt.xlabel('Number of hours booked')
+        plt.ylabel('Probability')
+        plt.grid()
+        plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Aggregated Data/'+ 'Building Aggregates for Hours Booked')
+        plt.show()
+        
+        print('The aggregated mean is : ' + str(np.mean(modes)))
 
 
 ###############################################################################
 #   MAIN PROGRAM BODY
 ###############################################################################
 
-A = building_const(write_dir)
-    
+aggregate(data = 'hours')
+
+
+
+
 
 '''
 X = np.histogram(k.days_numerical, bins = [1,2,3,4,5,6,7,8], density = True)[0]
