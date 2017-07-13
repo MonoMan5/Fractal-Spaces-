@@ -18,7 +18,7 @@ from sklearn import linear_model
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures, scale, normalize
-from sklearn.neighbors.kde import KernelDensity as KDE
+from statsmodels.nonparametric.kde import KDEUnivariate
 
 import numpy as np
 import math
@@ -51,7 +51,23 @@ class OfficeHist(object):
         
         self.name = frame[1]
         
+        total_days = len(frame[0]['Timeline'])
         a = frame[0][frame[0]['Occupancy'] == True]
+        
+        if total_days != 0:
+            probs = []
+            for of in set(frame[0]['Name']):
+                temp = frame[0][frame[0]['Name'] == of]
+                tot = len(temp[temp['Occupancy'] == False]['Timeline']) + len(temp[temp['Occupancy'] == True]['Timeline'])
+                occ = len(a[a['Name']==of]['Timeline'])
+                probs.append(occ/tot)
+                
+            daily_prob = np.mean(probs)
+            self.daily_prob = daily_prob
+        else:
+            daily_prob = 'None'
+            self.daily_prob = daily_prob
+        
         a = a.sort_values(['Day'])
         
         days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
@@ -116,10 +132,11 @@ class OfficeHist(object):
             plt.xlabel('Day of the week')
             plt.ylabel('Frequency (days)')
             plt.grid()
-            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Detailed Frequency per Building per Day/'+k.name + ' Frequency Detailed')
+            plt.savefig('C:/Users/Amar Sehic/Documents/Fractal/Python Data Analysis/Graphs/Detailed Frequency per Building per Day/'+k.name + ' Frequency')
             plt.show()
             
             print('The sample mean is ' +str(self.mean))
+            print('The Daily Probability is: ' + str(self.daily_prob))
             if self.mode == None :
                 print('No unique mode!')
             else:
@@ -232,6 +249,7 @@ class BuildingHist(OfficeHist):
             plt.show()
             
             print('The sample mean is ' +str(self.mean))
+            print('The Daily Probability is: ' + str(self.daily_prob))
             if self.mode == None :
                 print('No unique mode!')
             else:
@@ -605,6 +623,41 @@ def aggregate(show_time = True):
 ###############################################################################
 #   MAIN PROGRAM BODY
 ###############################################################################
+
+A = building_const(write_dir)
+    
+
+'''
+X = np.histogram(k.days_numerical, bins = [1,2,3,4,5,6,7,8], density = True)[0]
+
+Bins = range(1,len(X)+1)
+
+X = np.array(list((zip(Bins,X))))
+X.reshape(-1,1)
+
+Test = np.histogram(j.days_numerical, bins = [1,2,3,4,5,6,7,8], density = True)
+
+X_plot = np.array(list((zip(Bins,Test[0]))))
+X_plot.reshape(-1,1)
+
+print(X)
+print(X_plot)
+
+X = np.array(k.days_numerical)
+
+X_plot = np.random.randint(0,10,50)
+X_plot.sort()
+
+print(X)
+print(X_plot)
+
+kde = KDEUnivariate(X.astype(float))
+kde.fit()
+plt.plot(X_plot, list(map(lambda x: kde.evaluate(x),X_plot)), color = 'k')
+k.plot()
+'''
+
+
 
 '''
     
