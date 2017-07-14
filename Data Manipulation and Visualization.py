@@ -51,11 +51,15 @@ class OfficeHist(object):
     
     def __init__(self,frame):
         
+        
+        self.orig_frame = frame
         self.name = frame[1]
+        
         
         total_days = len(frame[0]['Timeline'])
         a = frame[0][frame[0]['Occupancy'] == True]
-        
+                    
+       
         time_dist = a[a['Time Used'] != 'Closed']['Time Used']
         
         if len(time_dist) != 0:
@@ -140,6 +144,86 @@ class OfficeHist(object):
         self.mode = m
         
         
+    def get_weeks(self):
+        
+        frame = self.orig_frame
+        
+        weekly_sums = []
+        weekly_time_sums = []
+        
+        total_days = len(frame[0]['Timeline'])
+        
+        if total_days != 0:
+            
+            if len(set(frame[0]['Name']))>1:
+                
+                weekly_offices = []
+                weekly_time_offices = []
+
+                
+                for of in set(frame[0]['Name']):
+                    temp = frame[0][frame[0]['Name'] == of]
+                    weekly_sums = []
+                    weekly_time_sums = []
+                    for ii in range(0,52):
+                        clicks = 0
+                        emptys = 0
+                        nans = 0
+                        time = 0
+                        for day in range(0,7):
+                            if temp[temp['Timeline']==(7*ii)+day+1].iloc[0,8] == True:
+                                clicks+=1
+                                time = time + float(temp[temp['Timeline']==(7*ii)+day+1].iloc[0,7])
+                            elif temp[temp['Timeline']==(7*ii)+day+1].iloc[0,8] == False:
+                                emptys+=1
+                            else:
+                                nans+=1
+    
+                        if nans == 7:
+                            weekly_sums.append(0)
+                            weekly_time_sums.append(0)
+                        else:
+                            weekly_sums.append(clicks/(emptys+clicks))
+                            weekly_time_sums.append(time)
+                    weekly_offices.append(weekly_sums)
+                    weekly_time_offices.append(weekly_time_sums)
+                
+                W = list(zip(*weekly_offices))            
+                weekly_offices = [np.mean(x) for x in W]
+                
+                W = list(zip(*weekly_time_offices))            
+                weekly_time_offices = [np.mean(x) for x in W]
+                
+                self.weekly_occupancy = weekly_offices
+                self.weekly_time_occupancy = weekly_time_offices
+                    
+                    
+            else:
+                
+                for of in set(frame[0]['Name']):
+                    temp = frame[0][frame[0]['Name'] == of]
+                    weekly_sums = []
+                    weekly_time_sums = []
+                    for ii in range(0,52):
+                        clicks = 0
+                        emptys = 0
+                        for day in range(0,7):
+                            if 7*ii+day == 364:
+                                pass
+                            elif temp.loc[(7*ii)+day,'Occupancy'] == True:
+                                clicks+=1
+                                time = time + temp[temp['Timeline']==(7*ii)+day+1].iloc[0,7]
+                            elif temp.loc[(7*ii)+day,'Occupancy'] == False:
+                                emptys+=1
+                        weekly_sums.append(clicks/(emptys+clicks))
+                        weekly_time_sums.append(time)
+                
+                self.weekly_occupancy = weekly_sums
+                self.weekly_time_occupancy = weekly_time_offices
+        
+        else:
+            
+            self.weekly_occupancy = None
         
     def load_offices(self):
         print('Error: Already an Office Object!')
@@ -698,12 +782,31 @@ def aggregate(data = 'days', show_time = True):
 ###############################################################################
 #   MAIN PROGRAM BODY
 ###############################################################################
-
-aggregate(data = 'hours')
-
+A = building_const(write_dir)
 
 
+k = A[3]
 
+k.get_weeks()
+print(k.weekly_time_occupancy)
+
+occ= k.weekly_time_occupancy
+occ2 = k.weekly_occupancy
+
+bins = range(1,len(occ)+1)
+print(len(occ))
+
+occ = [x*len(k.offices) for x in occ]
+
+m = np.mean(occ)
+
+plt.bar(bins, occ, align = 'center')
+plt.bar(bins, occ2, align = 'center', color = 'r')
+plt.title(k.name)
+plt.axhline(m,color = 'r')
+plt.grid()
+plt.show()
+print('The time mean is: ' + str(m))
 
 '''
 X = np.histogram(k.days_numerical, bins = [1,2,3,4,5,6,7,8], density = True)[0]
