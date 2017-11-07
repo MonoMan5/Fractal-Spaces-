@@ -1,3 +1,3 @@
-# Fractal-Spaces-
-Python files for data analysis and machine learning
+# Rubik
+Python files for data analysis, scraping and machine learning
 Me Me Me.
